@@ -187,3 +187,4 @@ void            virtio_disk_intr(void);
 uint64          kfreemem(void);
 uint64          proc_count(void);
 uint64          nopenfiles(void);
+int             procinfo(uint64, int);
