@@ -150,6 +150,7 @@ UPROGS=\
 	$U/_forphan\
 	$U/_dorphan\
 	$U/_sync\
+	$U/_sysinfotest\
 	$U/_xargs\
 	$U/_trace\
     $U/_sleep\

@@ -1,4 +1,5 @@
 #include "types.h"
+#include "sysinfo.h"
 #include "riscv.h"
 #include "defs.h"
 #include "param.h"
@@ -118,5 +119,20 @@ sys_trace(void)
 
   argint(0, &mask);
   myproc()->tracemask = mask;
+  return 0;
+}
+
+uint64
+sys_sysinfo(void)
+{
+  uint64 addr;
+  struct sysinfo info;
+
+  argaddr(0, &addr);
+  info.freemem = kfreemem();
+  info.nproc = proc_count();
+  info.nopenfile = nopenfiles();
+  if(copyout(myproc()->pagetable, myproc()->sz, addr, (char *)&info, sizeof(info)) < 0)
+    return -1;
   return 0;
 }
