@@ -152,6 +152,7 @@ UPROGS=\
 	$U/_sync\
 	$U/_sysinfotest\
 	$U/_ps\
+	$U/_a1check\
 	$U/_xargs\
 	$U/_trace\
     $U/_sleep\
