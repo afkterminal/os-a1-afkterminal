@@ -151,6 +151,7 @@ UPROGS=\
 	$U/_dorphan\
 	$U/_sync\
 	$U/_xargs\
+	$U/_trace\
     $U/_sleep\
 	$U/_find
 	

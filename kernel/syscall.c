@@ -102,11 +102,13 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
+extern uint64 sys_trace(void);
 extern uint64 sys_sync(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
 static uint64 (*syscalls[])(void) = {
+[SYS_trace]   sys_trace,
   // clang-format off
   [SYS_fork]    = sys_fork,
   [SYS_exit]    = sys_exit,
@@ -133,6 +135,45 @@ static uint64 (*syscalls[])(void) = {
   // clang-format on
 };
 
+static char *syscall_names[] = {
+[SYS_fork]    = "fork",
+[SYS_exit]    = "exit",
+[SYS_wait]    = "wait",
+[SYS_pipe]    = "pipe",
+[SYS_read]    = "read",
+[SYS_kill]    = "kill",
+[SYS_exec]    = "exec",
+[SYS_fstat]   = "fstat",
+[SYS_chdir]   = "chdir",
+[SYS_dup]     = "dup",
+[SYS_getpid]  = "getpid",
+[SYS_sbrk]    = "sbrk",
+[SYS_pause]   = "pause",
+[SYS_uptime]  = "uptime",
+[SYS_open]    = "open",
+[SYS_write]   = "write",
+[SYS_mknod]   = "mknod",
+[SYS_unlink]  = "unlink",
+[SYS_link]    = "link",
+[SYS_mkdir]   = "mkdir",
+[SYS_close]   = "close",
+[SYS_sync]    = "sync",
+[SYS_trace]   = "trace",
+};
+
+static int
+takes_str(int n)
+{
+  return n == SYS_open || n == SYS_exec || n == SYS_chdir || n == SYS_mkdir ||
+         n == SYS_unlink || n == SYS_link || n == SYS_mknod;
+}
+
+static int
+takes_none(int n)
+{
+  return n == SYS_fork || n == SYS_getpid || n == SYS_uptime || n == SYS_sync;
+}
+
 void
 syscall(void)
 {
@@ -140,10 +181,30 @@ syscall(void)
   struct proc *p = myproc();
 
   num = p->trapframe->a7;
-  if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    // Use num to lookup the system call function for num, call it,
-    // and store its return value in p->trapframe->a0
+  if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+    uint64 a0 = p->trapframe->a0;      // save BEFORE the handler overwrites it
+    char str[MAXPATH];
+    int strok = 0;
+
+    // read the string BEFORE the call: a successful exec frees that memory
+    if((p->tracemask & (1 << num)) && takes_str(num))
+      strok = fetchstr(a0, str, MAXPATH) >= 0;
+
     p->trapframe->a0 = syscalls[num]();
+
+    // check the mask AFTER the call, so trace can trace itself
+    if(p->tracemask & (1 << num)){
+      int ret = (int)p->trapframe->a0;
+      if(takes_none(num))
+        printk("[%d] %s() -> %d\n", p->pid, syscall_names[num], ret);
+      else if(takes_str(num)){
+        if(strok)
+          printk("[%d] %s(\"%s\") -> %d\n", p->pid, syscall_names[num], str, ret);
+        else
+          printk("[%d] %s(?) -> %d\n", p->pid, syscall_names[num], ret);
+      } else
+        printk("[%d] %s(%d) -> %d\n", p->pid, syscall_names[num], (int)a0, ret);
+    }
   } else {
     printk("%d %s: unknown sys call %d\n", p->pid, p->name, num);
     p->trapframe->a0 = -1;
